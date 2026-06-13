@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>VoxelCraft 3D Mobile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <!-- Main Game Canvas Container -->
+  <div id="game-container"></div>
+
+  <!-- Central Crosshair -->
+  <div id="crosshair"></div>
+
+  <!-- UI HUD Layer -->
+  <div id="hud" class="hidden">
+    <!-- Server Status -->
+    <div id="status-bar">
+      <span id="status-indicator" class="offline"></span>
+      <span id="status-text">Chưa kết nối</span>
+    </div>
+
+    <!-- Chat Overlay -->
+    <div id="chat-container">
+      <div id="chat-messages"></div>
+      <div id="chat-input-wrapper" class="hidden">
+        <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." autocomplete="off">
+        <button id="chat-send">Gửi</button>
+      </div>
+      <button id="chat-toggle-btn">💬 Chat</button>
+    </div>
+
+    <!-- On-screen Mobile Controls (Visible on touch devices) -->
+    <div id="joystick-base">
+      <div id="joystick-knob"></div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div id="action-buttons">
+      <button id="btn-mine" class="btn-action red">🪓 MINE</button>
+      <button id="btn-place" class="btn-action blue">🧱 PLACE</button>
+      <button id="btn-jump" class="btn-action green">▲ JUMP</button>
+    </div>
+
+    <!-- Voxel Hotbar Selection -->
+    <div id="hotbar-container">
+      <div id="hotbar">
+        <!-- Hotbar slots populated by main.ts -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Menu / Lobby Overlay -->
+  <div id="lobby-menu">
+    <div class="lobby-card">
+      <div class="logo-wrapper">
+        <h1 class="logo-text">VOXEL CRAFT 3D</h1>
+        <p class="logo-sub">Mobile Multiplayer Survival</p>
+      </div>
+
+      <div class="form-group">
+        <label for="nickname">Biệt danh của bạn</label>
+        <input type="text" id="nickname" placeholder="Player..." value="Guest">
+      </div>
+
+      <div class="form-group">
+        <label for="server-url">Địa chỉ Server (IP Máy tính / Cloud)</label>
+        <input type="text" id="server-url" placeholder="ws://192.168.x.x:8080" value="ws://localhost:8080">
+      </div>
+
+      <div class="button-group">
+        <button id="btn-play-online" class="btn-primary">CHƠI MULTIPLAYER (ONLINE)</button>
+        <button id="btn-play-offline" class="btn-secondary">CHƠI SINGLEPLAYER (OFFLINE)</button>
+      </div>
+
+      <div class="lobby-footer">
+        Cài đặt trực tiếp qua SideStore trên iPhone của bạn
+      </div>
+    </div>
+  </div>
+
+  <!-- Connection Status Banner -->
+  <div id="connection-banner" class="hidden">Connecting...</div>
+
+  <!-- Game Entry Point -->
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
