@@ -1,0 +1,39 @@
+workflows:
+  voxelcraft-ios-unsigned:
+    name: VoxelCraft iOS Unsigned Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      node: 18
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+      - name: Build web assets
+        script: npm run build
+      - name: Add and Sync Capacitor iOS
+        script: |
+          npx cap add ios
+          npx cap sync ios
+      - name: Build Xcode Archive (Unsigned)
+        script: |
+          cd ios/App
+          xcodebuild archive \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -archivePath App.xcarchive \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS=""
+      - name: Package App Bundle into Unsigned IPA
+        script: |
+          cd ios/App
+          mkdir -p Payload
+          cp -r App.xcarchive/Products/Applications/App.app Payload/
+          zip -r VoxelCraft.ipa Payload
+    artifacts:
+      - ios/App/VoxelCraft.ipa
