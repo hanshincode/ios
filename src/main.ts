@@ -75,33 +75,33 @@ function selectHotbarSlot(slot: HTMLElement, type: BlockType) {
   }
 }
 
-// Update Heart Hearts HUD (max 20 health points = 10 hearts)
+// Update Heart Hearts HUD
 function updateHealthHUD(health: number) {
   let html = '';
   for (let i = 0; i < 10; i++) {
     const hp = health - i * 2;
     if (hp >= 2) {
-      html += '❤️'; // Full Heart
+      html += '❤️';
     } else if (hp === 1) {
-      html += '💔'; // Half Heart
+      html += '💔';
     } else {
-      html += '🖤'; // Empty Heart
+      html += '🖤';
     }
   }
   healthBar.innerHTML = html;
 }
 
-// Update Hunger HUD (max 20 points = 10 drumsticks)
+// Update Hunger HUD
 function updateHungerHUD(hunger: number) {
   let html = '';
   for (let i = 0; i < 10; i++) {
     const hg = hunger - i * 2;
     if (hg >= 2) {
-      html += '🍗'; // Full Drumstick
+      html += '🍗';
     } else if (hg === 1) {
-      html += '🍖'; // Half Drumstick
+      html += '🍖';
     } else {
-      html += '🦴'; // Empty/Bone
+      html += '🦴';
     }
   }
   hungerBar.innerHTML = html;
@@ -112,11 +112,16 @@ function triggerDamageFlash() {
   vignette.classList.add('damage');
   setTimeout(() => {
     vignette.classList.remove('damage');
-  }, 350); // Match animation duration in CSS
+  }, 350);
 }
 
-// Start Game Mode
+// Start Game Mode with Orbit Camera Glide Transition
 function startGame(isOnline: boolean) {
+  if (!engine) return;
+
+  // Play button click sound (jump synth)
+  gameAudio.playJump();
+
   // Lock screen orientation to landscape on mobile devices
   try {
     ScreenOrientation.lock({ orientation: 'landscape' });
@@ -127,43 +132,37 @@ function startGame(isOnline: boolean) {
   const nickname = nicknameInput.value.trim() || 'Guest';
   const serverUrl = serverUrlInput.value.trim();
 
-  // Hide Lobby, Show HUD
-  lobbyMenu.classList.add('hidden');
+  // Start smooth camera glide transition in 3D engine
+  engine.startTransition();
+
+  // Smoothly fade out the lobby card
+  lobbyMenu.classList.add('fade-out');
+  setTimeout(() => {
+    lobbyMenu.classList.add('hidden');
+  }, 800);
+
+  // Fade in the gameplay HUD
   hudElement.classList.remove('hidden');
-
-  // Initialize Game Engine
-  const container = document.getElementById('game-container')!;
-  engine = new GameEngine(container);
-  
-  // Set default selected block to the first item (Grass)
-  engine.player.selectedBlock = HOTBAR_ITEMS[0].type;
-
-  // Setup HUD and hotbars
-  initHotbar();
-  updateHealthHUD(engine.player.health);
-  updateHungerHUD(engine.player.hunger);
+  setTimeout(() => {
+    hudElement.classList.add('visible');
+  }, 50);
 
   // Wire up survival listeners
   engine.player.onHealthChange = (health) => updateHealthHUD(health);
   engine.player.onHungerChange = (hunger) => updateHungerHUD(hunger);
   engine.player.onTakeDamage = () => triggerDamageFlash();
 
-  // Setup Chat toggles
-  setupChatHandlers();
-
-  // Setup Audio controls
-  setupAudioHandlers();
+  // Initial HUD stats
+  updateHealthHUD(engine.player.health);
+  updateHungerHUD(engine.player.hunger);
 
   if (isOnline) {
-    // Setup Multiplayer Callbacks
     engine.multiplayer.onConnectionState = (connected, msg) => {
       connectionBanner.innerText = msg;
       if (connected) {
         connectionBanner.classList.add('hidden');
         statusIndicator.className = 'online';
         statusText.innerText = `Online (${nickname})`;
-        
-        // Let server know our name
         engine?.multiplayer.sendChat(`/name ${nickname}`);
       } else {
         connectionBanner.classList.remove('hidden');
@@ -176,17 +175,12 @@ function startGame(isOnline: boolean) {
       addChatMessage(sender, msg);
     };
 
-    // Connect to server
     engine.multiplayer.connect(serverUrl);
   } else {
-    // Offline mode
     statusIndicator.className = 'offline';
     statusText.innerText = 'Offline';
     connectionBanner.classList.add('hidden');
   }
-
-  // Start engine loop
-  engine.start();
 }
 
 // Chat UI Controls
@@ -263,7 +257,24 @@ function setupAudioHandlers() {
   });
 }
 
-// Event Listeners for menu entry
+// Initialize game on page load (starts orbiting background rendering)
+window.addEventListener('DOMContentLoaded', () => {
+  const container = document.getElementById('game-container')!;
+  
+  // Create engine and start the orbit rendering loop
+  engine = new GameEngine(container);
+  engine.start();
+
+  // Pre-load UI configurations
+  initHotbar();
+  setupAudioHandlers();
+  setupChatHandlers();
+
+  // Default block
+  engine.player.selectedBlock = HOTBAR_ITEMS[0].type;
+});
+
+// Event Listeners for play buttons
 btnPlayOnline.addEventListener('click', () => startGame(true));
 btnPlayOffline.addEventListener('click', () => startGame(false));
 
