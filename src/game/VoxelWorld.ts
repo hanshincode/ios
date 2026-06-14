@@ -95,10 +95,14 @@ export class VoxelWorld {
   }
 
   public getBlock(x: number, y: number, z: number): BlockType {
-    if (y < 0 || y >= this.chunkHeight) return BlockType.AIR;
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    const iz = Math.floor(z);
+    
+    if (iy < 0 || iy >= this.chunkHeight) return BlockType.AIR;
 
-    const cx = Math.floor(x / this.chunkSize);
-    const cz = Math.floor(z / this.chunkSize);
+    const cx = Math.floor(ix / this.chunkSize);
+    const cz = Math.floor(iz / this.chunkSize);
     const key = this.getChunkKey(cx, cz);
 
     let chunk = this.chunks.get(key);
@@ -106,18 +110,33 @@ export class VoxelWorld {
       chunk = this.generateChunkData(cx, cz);
     }
 
-    const bx = ((x % this.chunkSize) + this.chunkSize) % this.chunkSize;
-    const bz = ((z % this.chunkSize) + this.chunkSize) % this.chunkSize;
-    const index = bx + bz * this.chunkSize + y * this.chunkSize * this.chunkSize;
+    const bx = ((ix % this.chunkSize) + this.chunkSize) % this.chunkSize;
+    const bz = ((iz % this.chunkSize) + this.chunkSize) % this.chunkSize;
+    const index = bx + bz * this.chunkSize + iy * this.chunkSize * this.chunkSize;
 
     return chunk[index] as BlockType;
   }
 
-  public setBlock(x: number, y: number, z: number, type: BlockType, sync = true): void {
-    if (y < 0 || y >= this.chunkHeight) return;
+  public getTerrainHeight(x: number, z: number): number {
+    const ix = Math.floor(x);
+    const iz = Math.floor(z);
+    for (let y = this.chunkHeight - 1; y >= 0; y--) {
+      if (this.getBlock(ix, y, iz) !== BlockType.AIR) {
+        return y + 1;
+      }
+    }
+    return 16; // default height
+  }
 
-    const cx = Math.floor(x / this.chunkSize);
-    const cz = Math.floor(z / this.chunkSize);
+  public setBlock(x: number, y: number, z: number, type: BlockType, sync = true): void {
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    const iz = Math.floor(z);
+
+    if (iy < 0 || iy >= this.chunkHeight) return;
+
+    const cx = Math.floor(ix / this.chunkSize);
+    const cz = Math.floor(iz / this.chunkSize);
     const key = this.getChunkKey(cx, cz);
 
     let chunk = this.chunks.get(key);
@@ -125,9 +144,9 @@ export class VoxelWorld {
       chunk = this.generateChunkData(cx, cz);
     }
 
-    const bx = ((x % this.chunkSize) + this.chunkSize) % this.chunkSize;
-    const bz = ((z % this.chunkSize) + this.chunkSize) % this.chunkSize;
-    const index = bx + bz * this.chunkSize + y * this.chunkSize * this.chunkSize;
+    const bx = ((ix % this.chunkSize) + this.chunkSize) % this.chunkSize;
+    const bz = ((iz % this.chunkSize) + this.chunkSize) % this.chunkSize;
+    const index = bx + bz * this.chunkSize + iy * this.chunkSize * this.chunkSize;
 
     chunk[index] = type;
 

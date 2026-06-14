@@ -37,7 +37,32 @@ html, body {
   z-index: 1;
 }
 
-/* Crosshair */
+/* Screen Vignette & Damage Flash */
+#vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 40;
+  pointer-events: none;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.55);
+  transition: background-color 0.1s ease-out;
+}
+
+#vignette.damage {
+  background-color: rgba(255, 0, 0, 0.22);
+  box-shadow: inset 0 0 120px rgba(255, 0, 0, 0.65);
+  animation: flashRed 0.35s ease-out forwards;
+}
+
+@keyframes flashRed {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Central Crosshair */
 #crosshair {
   position: absolute;
   top: 50%;
@@ -217,7 +242,7 @@ button {
   width: 100%;
   height: 100%;
   z-index: 50;
-  pointer-events: none; /* Let clicks pass through to canvas when needed */
+  pointer-events: none;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
@@ -225,11 +250,18 @@ button {
   display: none !important;
 }
 
-/* Status bar */
-#status-bar {
+/* Top bar: Status & Audio toggle */
+#top-bar {
   position: absolute;
   top: 20px;
   right: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+#status-bar {
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -240,7 +272,6 @@ button {
   align-items: center;
   gap: 8px;
   font-size: 0.8rem;
-  pointer-events: auto;
 }
 
 #status-indicator {
@@ -252,6 +283,25 @@ button {
 
 #status-indicator.online { background-color: #4caf50; box-shadow: 0 0 8px #4caf50; }
 #status-indicator.offline { background-color: #f44336; box-shadow: 0 0 8px #f44336; }
+
+#audio-toggle-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-glass);
+  color: #fff;
+  font-size: 0.9rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#audio-toggle-btn:active {
+  transform: scale(0.9);
+}
 
 /* Chat Container */
 #chat-container {
@@ -409,6 +459,34 @@ button {
 
 .btn-action:active {
   transform: scale(0.92);
+}
+
+/* Survival Container (Hearts & Hunger) */
+#survival-container {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: space-between;
+  width: 320px;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.stat-bar {
+  display: flex;
+  gap: 2px;
+  font-size: 1.05rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+#health-bar {
+  color: #ff3b30;
+}
+
+#hunger-bar {
+  color: #ff9500;
 }
 
 /* Hotbar Container */

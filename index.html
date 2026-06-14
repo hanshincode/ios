@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
+  <!-- Screen Damage Vignette Overlay -->
+  <div id="vignette"></div>
+
   <!-- Main Game Canvas Container -->
   <div id="game-container"></div>
 
@@ -18,10 +21,13 @@
 
   <!-- UI HUD Layer -->
   <div id="hud" class="hidden">
-    <!-- Server Status -->
-    <div id="status-bar">
-      <span id="status-indicator" class="offline"></span>
-      <span id="status-text">Chưa kết nối</span>
+    <!-- Top Bar: Status & Sound Toggle -->
+    <div id="top-bar">
+      <div id="status-bar">
+        <span id="status-indicator" class="offline"></span>
+        <span id="status-text">Chưa kết nối</span>
+      </div>
+      <button id="audio-toggle-btn">🔊</button>
     </div>
 
     <!-- Chat Overlay -->
@@ -44,6 +50,12 @@
       <button id="btn-mine" class="btn-action red">🪓 MINE</button>
       <button id="btn-place" class="btn-action blue">🧱 PLACE</button>
       <button id="btn-jump" class="btn-action green">▲ JUMP</button>
+    </div>
+
+    <!-- Survival Status Bars (Hearts & Hunger) -->
+    <div id="survival-container">
+      <div id="health-bar" class="stat-bar"></div>
+      <div id="hunger-bar" class="stat-bar"></div>
     </div>
 
     <!-- Voxel Hotbar Selection -->

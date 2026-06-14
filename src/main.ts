@@ -1,5 +1,7 @@
 import { GameEngine } from './game/GameEngine';
 import { BlockType } from './game/VoxelWorld';
+import { ScreenOrientation } from '@capacitor/screen-orientation';
+import { gameAudio } from './game/Sound';
 
 // List of blocks in hotbar
 const HOTBAR_ITEMS = [
@@ -31,6 +33,12 @@ const chatInputWrapper = document.getElementById('chat-input-wrapper')!;
 const chatInput = (document.getElementById('chat-input') as HTMLInputElement);
 const chatSend = document.getElementById('chat-send')!;
 const chatToggleBtn = document.getElementById('chat-toggle-btn')!;
+
+// Audio and Survival HUD Elements
+const audioToggleBtn = document.getElementById('audio-toggle-btn')!;
+const healthBar = document.getElementById('health-bar')!;
+const hungerBar = document.getElementById('hunger-bar')!;
+const vignette = document.getElementById('vignette')!;
 
 // Initialize Hotbar UI
 function initHotbar() {
@@ -67,8 +75,55 @@ function selectHotbarSlot(slot: HTMLElement, type: BlockType) {
   }
 }
 
+// Update Heart Hearts HUD (max 20 health points = 10 hearts)
+function updateHealthHUD(health: number) {
+  let html = '';
+  for (let i = 0; i < 10; i++) {
+    const hp = health - i * 2;
+    if (hp >= 2) {
+      html += '❤️'; // Full Heart
+    } else if (hp === 1) {
+      html += '💔'; // Half Heart
+    } else {
+      html += '🖤'; // Empty Heart
+    }
+  }
+  healthBar.innerHTML = html;
+}
+
+// Update Hunger HUD (max 20 points = 10 drumsticks)
+function updateHungerHUD(hunger: number) {
+  let html = '';
+  for (let i = 0; i < 10; i++) {
+    const hg = hunger - i * 2;
+    if (hg >= 2) {
+      html += '🍗'; // Full Drumstick
+    } else if (hg === 1) {
+      html += '🍖'; // Half Drumstick
+    } else {
+      html += '🦴'; // Empty/Bone
+    }
+  }
+  hungerBar.innerHTML = html;
+}
+
+// Flash Screen Red Vignette on Damage
+function triggerDamageFlash() {
+  vignette.classList.add('damage');
+  setTimeout(() => {
+    vignette.classList.remove('damage');
+  }, 350); // Match animation duration in CSS
+}
+
 // Start Game Mode
 function startGame(isOnline: boolean) {
+  // Lock screen orientation to landscape on mobile devices
+  try {
+    ScreenOrientation.lock({ orientation: 'landscape' });
+  } catch (err) {
+    console.warn("Screen orientation lock is not supported on this platform:", err);
+  }
+
   const nickname = nicknameInput.value.trim() || 'Guest';
   const serverUrl = serverUrlInput.value.trim();
 
@@ -83,11 +138,21 @@ function startGame(isOnline: boolean) {
   // Set default selected block to the first item (Grass)
   engine.player.selectedBlock = HOTBAR_ITEMS[0].type;
 
-  // Setup Hotbar
+  // Setup HUD and hotbars
   initHotbar();
+  updateHealthHUD(engine.player.health);
+  updateHungerHUD(engine.player.hunger);
+
+  // Wire up survival listeners
+  engine.player.onHealthChange = (health) => updateHealthHUD(health);
+  engine.player.onHungerChange = (hunger) => updateHungerHUD(hunger);
+  engine.player.onTakeDamage = () => triggerDamageFlash();
 
   // Setup Chat toggles
   setupChatHandlers();
+
+  // Setup Audio controls
+  setupAudioHandlers();
 
   if (isOnline) {
     // Setup Multiplayer Callbacks
@@ -184,7 +249,21 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Event Listeners
+// Setup audio mute toggle button
+function setupAudioHandlers() {
+  const toggleMute = () => {
+    const isMuted = gameAudio.toggleMute();
+    audioToggleBtn.innerText = isMuted ? '🔇' : '🔊';
+  };
+  
+  audioToggleBtn.addEventListener('click', toggleMute);
+  audioToggleBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    toggleMute();
+  });
+}
+
+// Event Listeners for menu entry
 btnPlayOnline.addEventListener('click', () => startGame(true));
 btnPlayOffline.addEventListener('click', () => startGame(false));
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { VoxelWorld, BlockType } from './VoxelWorld';
 import { Physics } from './Physics';
+import { gameAudio } from './Sound';
 
 export class Player {
   public position = new THREE.Vector3(8, 30, 8); // Start above terrain
@@ -14,6 +15,17 @@ export class Player {
   
   public selectedBlock: BlockType = BlockType.STONE;
   
+  // Survival Stats
+  public health = 20; // 10 Hearts (each represents 2 points)
+  public maxHealth = 20;
+  public hunger = 20; // 10 Drumsticks
+  public maxHunger = 20;
+
+  // Callbacks for UI
+  public onHealthChange?: (h: number) => void;
+  public onHungerChange?: (h: number) => void;
+  public onTakeDamage?: () => void; // For damage red vignette flash
+
   private physics: Physics;
   private camera: THREE.Camera;
   
@@ -23,6 +35,10 @@ export class Player {
   private swinging = false;
   private swingTime = 0;
 
+  // Bobbing and Falling
+  private bobTime = 0;
+  private lastYVelocity = 0;
+
   constructor(camera: THREE.Camera, scene: THREE.Scene) {
     this.camera = camera;
     this.physics = new Physics();
@@ -31,10 +47,19 @@ export class Player {
     this.camera.rotation.order = 'YXZ';
     
     this.setupHand(scene);
+
+    // Dynamic hunger depletion (1 hunger point lost every 25 seconds)
+    setInterval(() => {
+      if (this.hunger > 0) {
+        this.setHunger(this.hunger - 1);
+      } else if (this.health > 2) {
+        // Starving damage
+        this.takeDamage(1);
+      }
+    }, 25000);
   }
 
   private setupHand(scene: THREE.Scene) {
-    // A simple 3D hand/arm mesh (represented as a stylized wooden tool block)
     const handGeo = new THREE.BoxGeometry(0.12, 0.12, 0.4);
     const handMat = new THREE.MeshStandardMaterial({
       color: '#bc8f8f', // skin/wood tone
@@ -45,7 +70,6 @@ export class Player {
     this.handMesh.rotation.set(-0.2, 0.1, 0);
     this.handMesh.castShadow = true;
     
-    // Add hand to handGroup, and handGroup to camera
     this.handGroup.add(this.handMesh);
     scene.add(this.handGroup);
   }
@@ -55,7 +79,6 @@ export class Player {
     this.swinging = true;
     this.swingTime = 0;
 
-    // Trigger visual feedback for multiplayer
     if ((window as any).gameMultiplayer) {
       (window as any).gameMultiplayer.sendSwing();
     }
@@ -75,9 +98,17 @@ export class Player {
       const y = hitResult.blockPos.y;
       const z = hitResult.blockPos.z;
       
-      // Can't break bedrock (Y = 0)
       if (y > 0) {
+        const brokenBlockType = world.getBlock(x, y, z);
         world.setBlock(x, y, z, BlockType.AIR);
+        
+        // Play synthesized sound
+        gameAudio.playBreak();
+
+        // Spawn visual dust particles
+        if ((window as any).gameParticles) {
+          (window as any).gameParticles.spawnBlockBreakParticles(x, y, z, brokenBlockType);
+        }
       }
     }
   }
@@ -96,7 +127,6 @@ export class Player {
       const y = hitResult.placePos.y;
       const z = hitResult.placePos.z;
 
-      // Don't place block on player's own body
       const pMinX = Math.floor(this.position.x - this.physics.playerWidth);
       const pMaxX = Math.floor(this.position.x + this.physics.playerWidth);
       const pMinY = Math.floor(this.position.y);
@@ -105,10 +135,13 @@ export class Player {
       const pMaxZ = Math.floor(this.position.z + this.physics.playerWidth);
 
       if (x >= pMinX && x <= pMaxX && y >= pMinY && y <= pMaxY && z >= pMinZ && z <= pMaxZ) {
-        return; // Intersects player, cancel placement
+        return; 
       }
 
       world.setBlock(x, y, z, this.selectedBlock);
+
+      // Play synthesized place sound
+      gameAudio.playPlace();
     }
   }
 
@@ -116,37 +149,103 @@ export class Player {
     if (this.grounded) {
       this.velocity.y = this.jumpStrength;
       this.grounded = false;
+
+      // Play synthesized jump sound
+      gameAudio.playJump();
+    }
+  }
+
+  public takeDamage(amount: number) {
+    this.health = Math.max(0, this.health - amount);
+    if (this.onHealthChange) this.onHealthChange(this.health);
+    if (this.onTakeDamage) this.onTakeDamage();
+
+    // Play synthesized damage sound
+    gameAudio.playDamage();
+
+    if (this.health <= 0) {
+      this.respawn();
+    }
+  }
+
+  public heal(amount: number) {
+    this.health = Math.min(this.maxHealth, this.health + amount);
+    if (this.onHealthChange) this.onHealthChange(this.health);
+  }
+
+  public setHunger(amount: number) {
+    this.hunger = Math.max(0, Math.min(this.maxHunger, amount));
+    if (this.onHungerChange) this.onHungerChange(this.hunger);
+  }
+
+  private respawn() {
+    // Reset positions and stats
+    this.position.set(8, 30, 8);
+    this.velocity.set(0, 0, 0);
+    this.health = this.maxHealth;
+    this.hunger = this.maxHunger;
+
+    if (this.onHealthChange) this.onHealthChange(this.health);
+    if (this.onHungerChange) this.onHungerChange(this.hunger);
+    
+    // Safety check terrain height
+    if ((window as any).gameWorld) {
+      const spawnY = (window as any).gameWorld.getTerrainHeight(8, 8);
+      this.position.y = spawnY + 0.5;
     }
   }
 
   public update(dt: number, world: VoxelWorld, moveDir: THREE.Vector3) {
-    // Calculate movement relative to camera yaw
     const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw).normalize();
     const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw).normalize();
 
-    // Map input direction to speed
     const velocityX = (forward.x * moveDir.z + right.x * moveDir.x) * this.speed;
     const velocityZ = (forward.z * moveDir.z + right.z * moveDir.x) * this.speed;
 
     this.velocity.x = velocityX;
     this.velocity.z = velocityZ;
 
+    // Save previous grounded state and Y velocity for fall damage calculation
+    const wasGrounded = this.grounded;
+
     // Apply physics
     const physicsResult = this.physics.update(this.position, this.velocity, dt, world);
     this.grounded = physicsResult.grounded;
 
+    // Fall Damage Check: triggers when landing after falling quickly
+    if (this.grounded && !wasGrounded && this.lastYVelocity < -12.5) {
+      const damage = Math.floor((Math.abs(this.lastYVelocity) - 11.5) * 1.5);
+      if (damage > 0) {
+        this.takeDamage(damage);
+      }
+    }
+
+    // Save current velocity for the next frame
+    this.lastYVelocity = this.velocity.y;
+
     // If player falls below world, respawn them
     if (this.position.y < -10) {
-      this.position.set(8, 30, 8);
-      this.velocity.set(0, 0, 0);
+      this.respawn();
+    }
+
+    // Camera Bobbing Logic (adds motion weight when moving)
+    const speed2D = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+    let bobOffset = 0;
+    
+    if (this.grounded && speed2D > 0.1) {
+      this.bobTime += dt * (speed2D * 2.0); // Frequency matches movement speed
+      bobOffset = Math.sin(this.bobTime) * 0.05; // amplitude
+    } else {
+      // Return bobOffset back to zero smoothly when still
+      this.bobTime = 0;
     }
 
     // Sync camera position
-    this.camera.position.set(this.position.x, this.position.y + 1.5, this.position.z);
+    this.camera.position.set(this.position.x, this.position.y + 1.5 + bobOffset, this.position.z);
     this.camera.rotation.y = this.yaw;
     this.camera.rotation.x = this.pitch;
 
-    // Sync hand group to camera position and rotation
+    // Sync hand group
     this.handGroup.position.copy(this.camera.position);
     this.handGroup.rotation.copy(this.camera.rotation);
 
